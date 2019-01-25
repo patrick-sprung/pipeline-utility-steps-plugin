@@ -85,18 +85,22 @@ public class ZipStepExecution extends SynchronousNonBlockingStepExecution<Void> 
             throw new IOException(destination.getRemote() + " exists.");
         }
         if (StringUtils.isBlank(step.getGlob())) {
-            if (StringUtils.isBlank(step.getGlobExclude()))
+            if (StringUtils.isBlank(step.getGlobExclude())) {
                 listener.getLogger().println("Writing zip file of " + source.getRemote() + " to " + destination.getRemote());
-            else
+            }
+            else {
                 listener.getLogger().println("Writing zip file of " + source.getRemote() + " to " + destination.getRemote()
-                    + ", excluding [" + step.getGlobExclude() + "]");
+                        + ", excluding [" + step.getGlobExclude() + "]");
+            }
         } else {
-            if (StringUtils.isBlank(step.getGlobExclude()))
+            if (StringUtils.isBlank(step.getGlobExclude())) {
                 listener.getLogger().println("Writing zip file of " + source.getRemote() + " filtered by ["
                         + step.getGlob() + "] to " + destination.getRemote());
-            else
+            }
+            else {
                 listener.getLogger().println("Writing zip file of " + source.getRemote() + " filtered by ["
                         + step.getGlob() + "], excluding [" + step.getGlobExclude() + "], to " + destination.getRemote());
+            }
         }
         int count = source.act(new ZipItFileCallable(destination, step.getGlob(), step.getGlobExclude()));
         listener.getLogger().println("Zipped " + count + " entries.");
