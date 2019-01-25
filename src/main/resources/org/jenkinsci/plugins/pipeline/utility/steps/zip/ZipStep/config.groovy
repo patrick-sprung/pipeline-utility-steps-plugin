@@ -36,6 +36,11 @@ f.entry(field: 'dir', title: _('Directory')) {
 f.entry(field: 'glob', title: _('Glob')) {
     f.textbox()
 }
+
+f.entry(field: 'globExclude', title: _('Exclude Glob')) {
+    f.textbox()
+}
+
 f.entry(field: 'archive', title: _('Archive as artifact')) {
     f.checkbox()
 }

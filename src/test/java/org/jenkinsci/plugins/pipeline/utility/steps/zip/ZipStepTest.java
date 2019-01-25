@@ -64,6 +64,7 @@ public class ZipStepTest {
         step.setDir("base/");
         step.setGlob("**/*.zip");
         step.setArchive(true);
+        step.setGlobExclude("*.txt");
 
         ZipStep step2 = new StepConfigTester(j).configRoundTrip(step);
         j.assertEqualDataBoundBeans(step, step2);
@@ -159,6 +160,25 @@ public class ZipStepTest {
     }
 
     @Test
+    public void globExcludeTest() throws Exception {
+
+        WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+        // include everything, exclude files ending in ".zip"
+        p.setDefinition(new CpsFlowDefinition(
+                "node('slaves') {\n" +
+                        "  writeFile file: 'exclude1.csv', text: '...'\n" +
+                        "  dir('hello') {\n" +
+                        "    writeFile file: 'include.txt', text: 'Hello World!'\n" +
+                        "    writeFile file: 'exclude2.csv', text: '...'\n" +
+                        "  }\n" +
+                        "  zip zipFile: 'hello.zip', globExclude: '**/*.csv', glob: '', archive: true\n" +
+                        "}", true));
+        WorkflowRun run = j.assertBuildStatusSuccess(p.scheduleBuild2(0));
+        verifyArchiveExclusion(run, "hello/");
+
+    }
+
+    @Test
     public void emptyZipFile() throws Exception {
 
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
@@ -204,6 +224,27 @@ public class ZipStepTest {
 	        zip.close();
         }
 	
+    }
+
+    private void verifyArchiveExclusion(WorkflowRun run, String basePath) throws IOException {
+        assertTrue("Build should have artifacts", run.getHasArtifacts());
+        Run<WorkflowJob, WorkflowRun>.Artifact artifact = run.getArtifacts().get(0);
+        assertEquals("hello.zip", artifact.getFileName());
+        VirtualFile file = run.getArtifactManager().root().child(artifact.relativePath);
+        ZipInputStream zip = new ZipInputStream(file.open());
+        ZipEntry entry = zip.getNextEntry();
+        while (entry.isDirectory()) {
+            entry = zip.getNextEntry();
+        }
+        assertNotNull(entry);
+        assertEquals(basePath + "include.txt", entry.getName());
+        try(Scanner scanner = new Scanner(zip)){
+            assertTrue(scanner.hasNextLine());
+            assertEquals("Hello World!", scanner.nextLine());
+            assertNull("There should be no more entries", zip.getNextEntry());
+            zip.close();
+        }
+
     }
 
     private void verifyArchivedNotContainingItself(WorkflowRun run) throws IOException {

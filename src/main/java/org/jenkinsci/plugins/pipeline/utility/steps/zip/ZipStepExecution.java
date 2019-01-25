@@ -85,12 +85,20 @@ public class ZipStepExecution extends SynchronousNonBlockingStepExecution<Void> 
             throw new IOException(destination.getRemote() + " exists.");
         }
         if (StringUtils.isBlank(step.getGlob())) {
-            listener.getLogger().println("Writing zip file of " + source.getRemote() + " to " + destination.getRemote());
+            if (StringUtils.isBlank(step.getGlobExclude()))
+                listener.getLogger().println("Writing zip file of " + source.getRemote() + " to " + destination.getRemote());
+            else
+                listener.getLogger().println("Writing zip file of " + source.getRemote() + " to " + destination.getRemote()
+                    + ", excluding [" + step.getGlobExclude() + "]");
         } else {
-            listener.getLogger().println("Writing zip file of " + source.getRemote()
-                    + " filtered by [" + step.getGlob() + "] to " + destination.getRemote());
+            if (StringUtils.isBlank(step.getGlobExclude()))
+                listener.getLogger().println("Writing zip file of " + source.getRemote() + " filtered by ["
+                        + step.getGlob() + "] to " + destination.getRemote());
+            else
+                listener.getLogger().println("Writing zip file of " + source.getRemote() + " filtered by ["
+                        + step.getGlob() + "], excluding [" + step.getGlobExclude() + "], to " + destination.getRemote());
         }
-        int count = source.act(new ZipItFileCallable(destination, step.getGlob()));
+        int count = source.act(new ZipItFileCallable(destination, step.getGlob(), step.getGlobExclude()));
         listener.getLogger().println("Zipped " + count + " entries.");
         if (step.isArchive()) {
             Run build = getContext().get(Run.class);
@@ -120,10 +128,12 @@ public class ZipStepExecution extends SynchronousNonBlockingStepExecution<Void> 
     static class ZipItFileCallable extends MasterToSlaveFileCallable<Integer> {
         final FilePath zipFile;
         final String glob;
+        final String globExclude;
 
-        public ZipItFileCallable(FilePath zipFile, String glob) {
+        public ZipItFileCallable(FilePath zipFile, String glob, String globExclude) {
             this.zipFile = zipFile;
             this.glob = StringUtils.isBlank(glob) ? "**/*" : glob;
+            this.globExclude = globExclude;
         }
 
         @Override
@@ -131,7 +141,7 @@ public class ZipStepExecution extends SynchronousNonBlockingStepExecution<Void> 
             String canonicalZip = new File(zipFile.getRemote()).getCanonicalPath();
 
             Archiver archiver = ArchiverFactory.ZIP.create(zipFile.write());
-            FileSet fs = Util.createFileSet(dir, glob);
+            FileSet fs = Util.createFileSet(dir, glob, globExclude);
             DirectoryScanner scanner = fs.getDirectoryScanner(new org.apache.tools.ant.Project());
             try {
                 for (String path : scanner.getIncludedFiles()) {
